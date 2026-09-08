@@ -3,14 +3,10 @@ import { useAppStore } from './store/useAppStore';
 import { DashboardShell } from './components/layout/DashboardShell';
 import { DashboardOverview } from './pages/DashboardOverview';
 import { LeadsQualification } from './pages/LeadsQualification';
-import { CompanyEnrichment } from './pages/CompanyEnrichment';
-import { OpportunityScoring } from './pages/OpportunityScoring';
-import { OutreachStudio } from './pages/OutreachStudio';
-import { RevenuePrediction } from './pages/RevenuePrediction';
-import { ActionRecommendations } from './pages/ActionRecommendations';
-import { HumanApprovalHub } from './pages/HumanApprovalHub';
-import { ExecutedWorkflows } from './pages/ExecutedWorkflows';
+import { QualificationRules } from './pages/QualificationRules';
+import { WorkflowView } from './pages/WorkflowView';
 import { SettingsIntegrations } from './pages/SettingsIntegrations';
+import { AdvancedView } from './pages/AdvancedView';
 import { NotFound } from './pages/NotFound';
 
 export default function App() {
@@ -22,27 +18,18 @@ export default function App() {
         return <DashboardOverview />;
       case 'leads':
         return <LeadsQualification />;
-      case 'enrichment':
-        return <CompanyEnrichment />;
-      case 'scoring':
-        return <OpportunityScoring />;
-      case 'outreach':
-        return <OutreachStudio />;
-      case 'revenue':
-        return <RevenuePrediction />;
-      case 'recommendations':
-        return <ActionRecommendations />;
-      case 'approvals':
-        return <HumanApprovalHub />;
-      case 'workflows':
-        return <ExecutedWorkflows />;
+      case 'rules':
+        return <QualificationRules />;
+      case 'workflow':
+        return <WorkflowView />;
       case 'settings':
         return <SettingsIntegrations />;
+      case 'advanced':
+        return <AdvancedView />;
       default:
-        return <NotFound />;
+        return <DashboardOverview />;
     }
   };
 
   return <DashboardShell>{renderModule()}</DashboardShell>;
 }
-

@@ -1,351 +1,439 @@
 import { create } from 'zustand';
-import { ModuleId, AIEmployeeState, PendingApprovalItem, ActivityLog, SystemNotification, WorkspaceTenant } from '../types';
+import {
+  ModuleId,
+  WorkspaceProfile,
+  LeadRecord,
+  LeadStatus,
+  ClassificationType,
+  SystemNotification,
+  ActivityLog,
+} from '../types';
 
 interface AppStoreState {
   activeModule: ModuleId;
-  isSidebarCollapsed: boolean;
-  isCommandMenuOpen: boolean;
-  isNotificationsOpen: boolean;
-  aiEmployee: AIEmployeeState;
-  pendingApprovals: PendingApprovalItem[];
-  activities: ActivityLog[];
+  activeWorkspaceId: string;
+  workspaces: WorkspaceProfile[];
+  leads: LeadRecord[];
   notifications: SystemNotification[];
-  currentWorkspace: WorkspaceTenant;
+  activities: ActivityLog[];
+  selectedLeadId: string | null;
+  isLeadModalOpen: boolean;
+  searchQuery: string;
+  classificationFilter: 'ALL' | ClassificationType;
+  isAdvancedNavExpanded: boolean;
 
   // Actions
   setActiveModule: (module: ModuleId) => void;
-  toggleSidebar: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  toggleCommandMenu: () => void;
-  setCommandMenuOpen: (open: boolean) => void;
-  toggleNotifications: () => void;
-  setNotificationsOpen: (open: boolean) => void;
-  approveAction: (id: string) => void;
-  rejectAction: (id: string) => void;
+  setActiveWorkspace: (workspaceId: string) => void;
+  updateWorkspaceRules: (workspaceId: string, updatedFields: Partial<WorkspaceProfile>) => void;
+  setSelectedLeadId: (leadId: string | null) => void;
+  setIsLeadModalOpen: (open: boolean) => void;
+  setSearchQuery: (query: string) => void;
+  setClassificationFilter: (filter: 'ALL' | ClassificationType) => void;
+  updateLeadStatus: (leadId: string, status: LeadStatus) => void;
+  markLeadReviewed: (leadId: string) => void;
+  addLead: (lead: Omit<LeadRecord, 'id' | 'workspaceId' | 'date'>) => void;
+  toggleAdvancedNav: () => void;
   markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
-  setWorkspace: (workspace: WorkspaceTenant) => void;
 }
+
+const defaultWorkspaces: WorkspaceProfile[] = [
+  {
+    id: 'msr-solutions',
+    name: 'MSR-SOLUTIONS',
+    subtitle: 'Environmental & Energy Solutions',
+    industry: 'Renewable Energy & CleanTech',
+    products: ['Residential Solar', 'Commercial Solar', 'Industrial Solar', 'Environmental Solutions'],
+    targetCustomers: ['Commercial Manufacturers', 'Industrial Warehouses', 'Agricultural Enterprises', 'Property Developers'],
+    importantSignals: [
+      'Commercial project requirement',
+      'Industrial facility footprint',
+      'High monthly energy consumption (> R50k/mo)',
+      'Urgent installation timeline (< 60 days)',
+      'Pre-approved capital budget',
+      'Decision-maker identified (Facilities/Operations Director)'
+    ],
+    highValueCriteria: [
+      'Commercial or Industrial solar system (> 100kW)',
+      'Budget exceeds $100,000 / R1,500,000',
+      'Multi-site rollout potential'
+    ],
+    urgencyCriteria: [
+      'Immediate deployment window required',
+      'Active grid outage / load-shedding mitigation need'
+    ],
+    budgetCriteria: 'R250,000 - R5,000,000+ per project',
+    notificationEmail: 'leads@msr-solutions.co.za',
+    slackWebhook: 'https://hooks.slack.com/services/MSR/LEADS/HOT_ALERTS',
+    n8nWebhookUrl: 'https://n8n.msr-solutions.co.za/webhook/aura-lead-submission',
+    apiKey: 'aura_live_msr_89f0a21d98e74a',
+  },
+  {
+    id: 'apex-industrial',
+    name: 'APEX INDUSTRIAL',
+    subtitle: 'Robotics & Automation Systems',
+    industry: 'Industrial Automation',
+    products: ['Robotic Arms', 'Automated Conveyors', 'Vision Inspection', 'PLC Control Systems'],
+    targetCustomers: ['Automotive OEMs', 'Pharmaceutical Packaging', 'Food Processing Plants'],
+    importantSignals: ['Factory Automation', 'Warehouse Expansion', 'Line Throughput Bottleneck'],
+    highValueCriteria: ['Full Plant Automation (> $500k)', 'Multi-Plant Standardization'],
+    urgencyCriteria: ['Q4 Budget Cycle Spend', 'Line Failure Replacement'],
+    budgetCriteria: '$100,000 - $2,000,000',
+    notificationEmail: 'sales@apexindustrial.com',
+    slackWebhook: 'https://hooks.slack.com/services/APEX/LEADS/HOT',
+    n8nWebhookUrl: 'https://n8n.apexindustrial.com/webhook/aura-lead',
+    apiKey: 'aura_live_apex_33b11c90a12e',
+  },
+];
+
+const initialLeads: LeadRecord[] = [
+  {
+    id: 'lead-101',
+    workspaceId: 'msr-solutions',
+    name: 'John Smith',
+    company: 'ABC Manufacturing',
+    email: 'j.smith@abcmfg.co.za',
+    phone: '+27 82 451 9023',
+    leadType: 'Commercial Solar',
+    score: 91,
+    classification: 'HOT',
+    date: 'Today, 08:45 AM',
+    status: 'New',
+    reviewed: false,
+    qualificationReasons: [
+      '✓ Commercial project requirement verified',
+      '✓ High energy load (> 150kW grid requirement)',
+      '✓ Immediate deployment timeline (< 30 days)',
+      '✓ Complete decision-maker contact details provided'
+    ],
+    signalsDetected: [
+      'Commercial Facility',
+      'High Energy Consumption',
+      'Decision-Maker Identified',
+      'Immediate Deployment'
+    ],
+    recommendedAction: 'Contact within 24 hours. Assign Senior Energy Specialist for site evaluation.',
+    submittedData: {
+      'Project Type': 'Commercial Solar Installation',
+      'Estimated Roof Area': '4,500 m²',
+      'Monthly Electricity Bill': 'R125,000',
+      'Timeline': 'Within 1 Month',
+      'Decision Maker': 'Yes (Operations Director)'
+    }
+  },
+  {
+    id: 'lead-102',
+    workspaceId: 'msr-solutions',
+    name: 'Sarah Jenkins',
+    company: 'Apex Logistics Hub',
+    email: 's.jenkins@apexlogistics.co.za',
+    phone: '+27 83 912 4001',
+    leadType: 'Industrial Solar',
+    score: 88,
+    classification: 'HOT',
+    date: 'Today, 07:15 AM',
+    status: 'New',
+    reviewed: false,
+    qualificationReasons: [
+      '✓ Industrial warehouse complex (6,000m² roof)',
+      '✓ Capital budget pre-approved (> R1.5M)',
+      '✓ Facilities Director decision-maker',
+      '✓ Urgent installation requested for grid resilience'
+    ],
+    signalsDetected: [
+      'Industrial Project',
+      'Urgent Installation',
+      'Budget > R1.5M',
+      'Roof Area > 5000m²'
+    ],
+    recommendedAction: 'Schedule technical site audit within 12 hours.',
+    submittedData: {
+      'Project Type': 'Industrial Microgrid & Solar',
+      'Facility Size': '6,000 m²',
+      'Current Power Backup': 'Diesel Generators (High Cost)',
+      'Timeline': 'Urgent'
+    }
+  },
+  {
+    id: 'lead-103',
+    workspaceId: 'msr-solutions',
+    name: 'Amanda Reyes',
+    company: 'Horizon Cold Storage',
+    email: 'areyes@horizoncold.co.za',
+    phone: '+27 71 502 1198',
+    leadType: 'Industrial Solar',
+    score: 95,
+    classification: 'HOT',
+    date: 'Today, 06:30 AM',
+    status: 'New',
+    reviewed: false,
+    qualificationReasons: [
+      '✓ Continuous high-load refrigeration demand',
+      '✓ Capital budget pre-approved (> R3.0M)',
+      '✓ VP Operations decision maker',
+      '✓ RFQ documentation attached'
+    ],
+    signalsDetected: [
+      'Refrigeration High Load',
+      'Pre-Approved Budget',
+      'High ROI Potential',
+      'Decision-Maker Verified'
+    ],
+    recommendedAction: 'Assign VP Engineering & call within 2 hours.',
+    submittedData: {
+      'Facility Type': 'Cold Storage Logistics',
+      'Estimated Budget': 'R3,500,000',
+      'Grid Dependability Need': 'Critical 24/7 Uptime'
+    }
+  },
+  {
+    id: 'lead-104',
+    workspaceId: 'msr-solutions',
+    name: 'David Miller',
+    company: 'Green Valley Foods',
+    email: 'dmiller@greenvalley.co.za',
+    phone: '+27 82 109 4832',
+    leadType: 'Environmental Solutions',
+    score: 74,
+    classification: 'WARM',
+    date: 'Yesterday',
+    status: 'Reviewed',
+    reviewed: true,
+    qualificationReasons: [
+      '✓ Environmental compliance & wastewater audit initiative',
+      '✓ Budget specified (R500,000 - R1,000,000)',
+      '⚠ Extended decision timeframe (3-6 months)'
+    ],
+    signalsDetected: [
+      'Compliance Driven',
+      'Mid-Market Food Producer',
+      'Flexible Timeline'
+    ],
+    recommendedAction: 'Send Environmental Solutions case studies & book discovery call next week.',
+    submittedData: {
+      'Initiative': 'Wastewater Treatment & Solar Hybrid',
+      'Budget': 'R750,000',
+      'Target Date': 'Q1 Next Year'
+    }
+  },
+  {
+    id: 'lead-105',
+    workspaceId: 'msr-solutions',
+    name: 'Elena Rostova',
+    company: 'BlueWave Fisheries',
+    email: 'e.rostova@bluewave.co.za',
+    phone: '+27 84 330 9182',
+    leadType: 'Commercial Solar',
+    score: 68,
+    classification: 'WARM',
+    date: 'Yesterday',
+    status: 'Contacted',
+    reviewed: true,
+    qualificationReasons: [
+      '✓ Commercial processing plant',
+      '⚠ Preliminary feasibility research phase',
+      '⚠ Pending board approval in November'
+    ],
+    signalsDetected: [
+      'Commercial Processing',
+      'Early Stage Research',
+      'Multi-Location Potential'
+    ],
+    recommendedAction: 'Nurture via case study email drip campaign.',
+    submittedData: {
+      'Facility': 'Seafood Processing Facility',
+      'Status': 'Gathering Proposals for Board Review'
+    }
+  },
+  {
+    id: 'lead-106',
+    workspaceId: 'msr-solutions',
+    name: 'Michael Vance',
+    company: 'Vance Residential Contracting',
+    email: 'mvance@vancebuild.co.za',
+    phone: '+27 83 001 9283',
+    leadType: 'Residential Solar',
+    score: 42,
+    classification: 'COLD',
+    date: '2 days ago',
+    status: 'Disqualified',
+    reviewed: true,
+    qualificationReasons: [
+      '✕ Single-family residential inquiry (Below B2B ICP threshold)',
+      '✕ No commercial entity or company energy load',
+      '✕ Low system capacity requirement (< 10kW)'
+    ],
+    signalsDetected: [
+      'Residential Only',
+      'Sub-Threshold System Size',
+      'Low B2B Fit'
+    ],
+    recommendedAction: 'Route to automated residential installer partner network.',
+    submittedData: {
+      'Property Type': 'Residential Home (3 Bedroom)',
+      'System Needed': '5kW Inverter + 1 Battery'
+    }
+  },
+];
+
+const initialNotifications: SystemNotification[] = [
+  {
+    id: 'notif-1',
+    title: '🔥 New HOT Lead Qualified',
+    message: 'John Smith (ABC Manufacturing) scored 91/100 for Commercial Solar.',
+    timestamp: '10 mins ago',
+    type: 'hot_lead',
+    read: false,
+    leadId: 'lead-101',
+  },
+  {
+    id: 'notif-2',
+    title: '⚡ High Value Industrial Opportunity',
+    message: 'Amanda Reyes (Horizon Cold Storage) scored 95/100 (Budget > R3.0M).',
+    timestamp: '2 hours ago',
+    type: 'hot_lead',
+    read: false,
+    leadId: 'lead-103',
+  },
+  {
+    id: 'notif-3',
+    title: '⚙️ Qualification Rules Updated',
+    message: 'Qualification rules for MSR-SOLUTIONS updated successfully.',
+    timestamp: '1 day ago',
+    type: 'rule_update',
+    read: true,
+  },
+];
+
+const initialActivities: ActivityLog[] = [
+  {
+    id: 'act-1',
+    timestamp: 'Just now',
+    actor: 'Aura AI Engine',
+    action: 'Qualified Lead: Amanda Reyes (Horizon Cold Storage)',
+    target: 'Score: 95/100 (HOT)',
+    type: 'qualification',
+    status: 'success',
+  },
+  {
+    id: 'act-2',
+    timestamp: '15 mins ago',
+    actor: 'n8n Webhook',
+    action: 'Received submission from Website Commercial Solar Form',
+    target: 'ABC Manufacturing',
+    type: 'webhook',
+    status: 'success',
+  },
+  {
+    id: 'act-3',
+    timestamp: '1 hour ago',
+    actor: 'Lead Manager',
+    action: 'Marked Lead #lead-104 as Reviewed',
+    target: 'David Miller (Green Valley Foods)',
+    type: 'lead_status',
+    status: 'success',
+  },
+];
 
 export const useAppStore = create<AppStoreState>((set) => ({
   activeModule: 'overview',
-  isSidebarCollapsed: false,
-  isCommandMenuOpen: false,
-  isNotificationsOpen: false,
-
-  currentWorkspace: {
-    id: 'ws-aura-corp',
-    name: 'Acme Enterprise Sales',
-    domain: 'acme-corp.auralead.ai',
-    plan: 'Enterprise Ultimate',
-    activeUsers: 48,
-    monthlyCreditsUsed: 84250,
-    monthlyCreditsLimit: 100000,
-    crmConnected: 'HubSpot Cloud Enterprise',
-    geminiModel: 'Gemini 1.5 Pro / Flash 2.0 (Server-Side)',
-  },
-
-  aiEmployee: {
-    name: 'Aura Agent Alpha',
-    avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
-    role: 'Lead Intelligence & Autonomous Revenue Agent',
-    status: 'autonomous',
-    currentAction: 'Evaluating 142 lead fit vectors & generating personalized sequences...',
-    activeTasksCount: 18,
-    confidenceScore: 98.4,
-    lastActive: 'Active now (Live)',
-    tokensProcessedPerSec: 1420,
-    activeAgentsCount: 6,
-    reasoningSteps: [
-      {
-        id: 'step-1',
-        timestamp: '10:14:02 AM',
-        stepName: 'Technographic Crawl & Domain Verification',
-        description: 'Analyzed stripe.com headers, DNS MX records, and technographic stack (Salesforce, Marketo, Snowflake).',
-        confidence: 99.1,
-        dataSources: ['BuiltWith API', 'Clearbit Webhook', 'DNS Inspector'],
-        status: 'passed',
-      },
-      {
-        id: 'step-2',
-        timestamp: '10:14:08 AM',
-        stepName: 'Executive Personnel Mapping',
-        description: 'Identified Chief Revenue Officer & 4 VP Sales hires in EMEA expansion team.',
-        confidence: 97.8,
-        dataSources: ['LinkedIn Sales Nav', 'Apollo API', 'G2 Intent Engine'],
-        status: 'passed',
-      },
-      {
-        id: 'step-3',
-        timestamp: '10:14:15 AM',
-        stepName: 'Custom Persona Outreach Drafting',
-        description: 'Synthesized 4-step personalized email sequence referencing recent Stripe DevCon expansion announcement.',
-        confidence: 98.2,
-        dataSources: ['Gemini 1.5 Pro', 'Salesforce Historical Win Patterns'],
-        status: 'passed',
-      },
-      {
-        id: 'step-4',
-        timestamp: '10:14:20 AM',
-        stepName: 'Governance Policy Gate Check',
-        description: 'Opportunity value ($185k) exceeds $100k threshold. Routing to Human Approval Hub.',
-        confidence: 100,
-        dataSources: ['Aura Security Policy Engine'],
-        status: 'flagged',
-      },
-    ],
-  },
-
-  pendingApprovals: [
-    {
-      id: 'appr-101',
-      title: 'High-Touch Enterprise C-Level Sequence Dispatch',
-      category: 'Outreach Draft',
-      companyName: 'Stripe Technologies Inc.',
-      companyDomain: 'stripe.com',
-      opportunityValue: 185000,
-      confidenceScore: 98.2,
-      aiReasoning: 'Strong buying signals detected: Added 3 VP Sales hires this month & expanded EMEA office.',
-      proposedAction: 'Dispatch personalized 4-step C-level email sequence to Chief Revenue Officer.',
-      timestamp: '2026-08-06T05:05:00Z',
-      priority: 'high',
-      riskScore: 'Low',
-      targetContact: {
-        name: 'Claire Hughes',
-        title: 'Chief Revenue Officer',
-        email: 'c.hughes@stripe.com',
-      },
-      emailPreview: {
-        subject: 'Accelerating Stripe EMEA revenue velocity with autonomous AI agents',
-        body: 'Hi Claire,\n\nI noticed Stripe recently expanded its EMEA sales leadership team. As you scale revenue operations across new regions, traditional lead qualification often creates latency between intent spikes and AE follow-up.\n\nAura Lead Intelligence operates as an autonomous AI SDR, enriching 100% of incoming lead vectors and generating C-level sequences in real-time.\n\nWould you be open to a 10-minute preview of how we helped comparable hyper-growth teams reduce lead response times from 4 hours to 45 seconds?',
-      },
-      reasoningSteps: [
-        {
-          id: 's1',
-          timestamp: '10:14:02 AM',
-          stepName: 'Technographic Crawl',
-          description: 'Verified Stripe DNS records and verified enterprise CRM setup.',
-          confidence: 99.2,
-          dataSources: ['Clearbit API', 'BuiltWith'],
-          status: 'passed',
-        },
-        {
-          id: 's2',
-          timestamp: '10:14:08 AM',
-          stepName: 'Executive Mapping',
-          description: 'Identified Claire Hughes (CRO) as primary economic buyer.',
-          confidence: 97.8,
-          dataSources: ['Apollo', 'LinkedIn'],
-          status: 'passed',
-        },
-        {
-          id: 's3',
-          timestamp: '10:14:15 AM',
-          stepName: 'C-Level Email Draft',
-          description: 'Drafted tailored sequence matching Stripe brand tone.',
-          confidence: 98.2,
-          dataSources: ['Gemini Enterprise'],
-          status: 'passed',
-        },
-      ],
-    },
-    {
-      id: 'appr-102',
-      title: 'Tier-1 Account Intent Escalation & AE Re-routing',
-      category: 'Lead Escalation',
-      companyName: 'Datadog Systems',
-      companyDomain: 'datadoghq.com',
-      opportunityValue: 240000,
-      confidenceScore: 94.5,
-      aiReasoning: 'Intent score spiked to 92/100 following 4 downloads of Enterprise Security Whitepaper.',
-      proposedAction: 'Re-route account owner from SMB team to Enterprise AE Sarah Jenkins.',
-      timestamp: '2026-08-06T04:45:00Z',
-      priority: 'high',
-      riskScore: 'Low',
-      targetContact: {
-        name: 'Marcus Vance',
-        title: 'VP Engineering & Infrastructure',
-        email: 'm.vance@datadoghq.com',
-      },
-      reasoningSteps: [
-        {
-          id: 's10',
-          timestamp: '09:40:00 AM',
-          stepName: 'Intent Spike Detection',
-          description: 'Datadog IP range downloaded Security Whitepaper 4 times in 2 hours.',
-          confidence: 96.5,
-          dataSources: ['G2 Crowd', 'Bombora Intent'],
-          status: 'passed',
-        },
-      ],
-    },
-    {
-      id: 'appr-103',
-      title: 'Contract Discount Incentive Override Request',
-      category: 'Contract Terms',
-      companyName: 'Vercel Platform Cloud',
-      companyDomain: 'vercel.com',
-      opportunityValue: 120000,
-      confidenceScore: 89.1,
-      aiReasoning: 'Competitor counter-offer detected. 12% multi-year discount maintains 88% win probability.',
-      proposedAction: 'Apply 12% multi-year commitment incentive to proposal draft.',
-      timestamp: '2026-08-06T03:30:00Z',
-      priority: 'medium',
-      riskScore: 'Moderate',
-      targetContact: {
-        name: 'Guillermo Rauch',
-        title: 'CEO',
-        email: 'g.rauch@vercel.com',
-      },
-      reasoningSteps: [
-        {
-          id: 's20',
-          timestamp: '08:20:00 AM',
-          stepName: 'Competitor Offer Analysis',
-          description: 'Detected competitive evaluation signals. Monte Carlo model predicts +18% win rate with 12% discount.',
-          confidence: 89.1,
-          dataSources: ['Gong Call Transcripts', 'Salesforce AI Model'],
-          status: 'passed',
-        },
-      ],
-    },
-    {
-      id: 'appr-104',
-      title: 'Autonomous Technographic Stack Enrichment',
-      category: 'Enrichment Trigger',
-      companyName: 'Snowflake Analytics',
-      companyDomain: 'snowflake.com',
-      opportunityValue: 310000,
-      confidenceScore: 97.0,
-      aiReasoning: 'Deep scan discovered 18 sales tech stack technologies and 45 key decision maker emails.',
-      proposedAction: 'Commit enriched firmographic record into CRM database.',
-      timestamp: '2026-08-06T02:15:00Z',
-      priority: 'low',
-      riskScore: 'Low',
-      targetContact: {
-        name: 'Sridhar Ramaswamy',
-        title: 'CEO',
-        email: 'sridhar@snowflake.com',
-      },
-      reasoningSteps: [],
-    },
-  ],
-
-  activities: [
-    {
-      id: 'act-1',
-      timestamp: '2 mins ago',
-      actor: 'Aura AI',
-      action: 'Qualified Lead #8492 (Linear Systems)',
-      target: 'Lead Score: 96/100',
-      type: 'qualification',
-      status: 'success',
-      latencyMs: 340,
-    },
-    {
-      id: 'act-2',
-      timestamp: '8 mins ago',
-      actor: 'Human Approved',
-      action: 'Outreach Sequence Approved for Figma Inc.',
-      target: 'Campaign #204 (120 leads)',
-      type: 'approval',
-      status: 'success',
-      latencyMs: 120,
-    },
-    {
-      id: 'act-3',
-      timestamp: '15 mins ago',
-      actor: 'Aura AI',
-      action: 'Enriched Firmographics for Notion Labs',
-      target: '52 Decision Makers Enriched',
-      type: 'enrichment',
-      status: 'success',
-      latencyMs: 820,
-    },
-    {
-      id: 'act-4',
-      timestamp: '28 mins ago',
-      actor: 'Aura AI',
-      action: 'Predicted Q3 Pipeline Expansion',
-      target: '+$1.4M Opportunity Delta',
-      type: 'scoring',
-      status: 'success',
-      latencyMs: 450,
-    },
-    {
-      id: 'act-5',
-      timestamp: '42 mins ago',
-      actor: 'System',
-      action: 'HubSpot CRM Sync Completed',
-      target: '1,240 records updated',
-      type: 'enrichment',
-      status: 'success',
-      latencyMs: 1100,
-    },
-  ],
-
-  notifications: [
-    {
-      id: 'notif-1',
-      title: 'Human Approval Required',
-      message: 'Aura prepared a high-value outreach draft for Stripe Technologies ($185k ARR).',
-      timestamp: '10 mins ago',
-      type: 'approval_required',
-      read: false,
-      linkId: 'approvals',
-    },
-    {
-      id: 'notif-2',
-      title: 'High Buying Intent Detected',
-      message: 'Datadog intent score reached 92/100 across 3 sales channels.',
-      timestamp: '25 mins ago',
-      type: 'ai_insight',
-      read: false,
-      linkId: 'scoring',
-    },
-    {
-      id: 'notif-3',
-      title: 'Autonomous Enrichment Complete',
-      message: 'Successfully enriched 45 company records with technographic data.',
-      timestamp: '1 hour ago',
-      type: 'workflow_complete',
-      read: true,
-      linkId: 'enrichment',
-    },
-  ],
+  activeWorkspaceId: 'msr-solutions',
+  workspaces: defaultWorkspaces,
+  leads: initialLeads,
+  notifications: initialNotifications,
+  activities: initialActivities,
+  selectedLeadId: null,
+  isLeadModalOpen: false,
+  searchQuery: '',
+  classificationFilter: 'ALL',
+  isAdvancedNavExpanded: false,
 
   setActiveModule: (module: ModuleId) => set({ activeModule: module }),
-  toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
-  setSidebarCollapsed: (collapsed: boolean) => set({ isSidebarCollapsed: collapsed }),
-  toggleCommandMenu: () => set((state) => ({ isCommandMenuOpen: !state.isCommandMenuOpen })),
-  setCommandMenuOpen: (open: boolean) => set({ isCommandMenuOpen: open }),
-  toggleNotifications: () => set((state) => ({ isNotificationsOpen: !state.isNotificationsOpen })),
-  setNotificationsOpen: (open: boolean) => set({ isNotificationsOpen: open }),
+  
+  setActiveWorkspace: (workspaceId: string) =>
+    set((state) => ({
+      activeWorkspaceId: workspaceId,
+      // Clear lead selection if changing workspace
+      selectedLeadId: null,
+      isLeadModalOpen: false,
+    })),
 
-  approveAction: (id: string) =>
+  updateWorkspaceRules: (workspaceId: string, updatedFields: Partial<WorkspaceProfile>) =>
+    set((state) => ({
+      workspaces: state.workspaces.map((ws) =>
+        ws.id === workspaceId ? { ...ws, ...updatedFields } : ws
+      ),
+      activities: [
+        {
+          id: `act-${Date.now()}`,
+          timestamp: 'Just now',
+          actor: 'Workspace Admin',
+          action: `Updated Qualification Rules for ${state.workspaces.find(w => w.id === workspaceId)?.name || 'Workspace'}`,
+          target: 'Rules Configuration',
+          type: 'rule_change',
+          status: 'success',
+        },
+        ...state.activities,
+      ],
+    })),
+
+  setSelectedLeadId: (leadId: string | null) => set({ selectedLeadId: leadId }),
+  setIsLeadModalOpen: (open: boolean) => set({ isLeadModalOpen: open }),
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
+  setClassificationFilter: (filter: 'ALL' | ClassificationType) => set({ classificationFilter: filter }),
+
+  updateLeadStatus: (leadId: string, status: LeadStatus) =>
+    set((state) => ({
+      leads: state.leads.map((l) =>
+        l.id === leadId ? { ...l, status } : l
+      ),
+    })),
+
+  markLeadReviewed: (leadId: string) =>
+    set((state) => ({
+      leads: state.leads.map((l) =>
+        l.id === leadId ? { ...l, reviewed: true, status: l.status === 'New' ? 'Reviewed' : l.status } : l
+      ),
+    })),
+
+  addLead: (newLeadData) =>
     set((state) => {
-      const approvedItem = state.pendingApprovals.find((i) => i.id === id);
-      const updatedApprovals = state.pendingApprovals.filter((i) => i.id !== id);
-      const newActivity: ActivityLog = {
-        id: `act-${Date.now()}`,
-        timestamp: 'Just now',
-        actor: 'Human Approved',
-        action: `Approved: ${approvedItem?.title || 'Action'}`,
-        target: approvedItem?.companyName || 'Target',
-        type: 'approval',
-        status: 'success',
-        latencyMs: 180,
+      const newLead: LeadRecord = {
+        ...newLeadData,
+        id: `lead-${Date.now()}`,
+        workspaceId: state.activeWorkspaceId,
+        date: 'Just now',
       };
+      
+      const newNotification: SystemNotification = {
+        id: `notif-${Date.now()}`,
+        title: `${newLead.classification === 'HOT' ? '🔥' : '⚡'} New Lead Submitted`,
+        message: `${newLead.name} (${newLead.company}) scored ${newLead.score}/100 [${newLead.classification}]`,
+        timestamp: 'Just now',
+        type: 'hot_lead',
+        read: false,
+        leadId: newLead.id,
+      };
+
       return {
-        pendingApprovals: updatedApprovals,
-        activities: [newActivity, ...state.activities],
+        leads: [newLead, ...state.leads],
+        notifications: [newNotification, ...state.notifications],
+        activities: [
+          {
+            id: `act-${Date.now()}`,
+            timestamp: 'Just now',
+            actor: 'n8n Webhook / AI Engine',
+            action: `Qualified Lead: ${newLead.name} (${newLead.company})`,
+            target: `Score: ${newLead.score}/100 (${newLead.classification})`,
+            type: 'qualification',
+            status: 'success',
+          },
+          ...state.activities,
+        ],
       };
     }),
 
-  rejectAction: (id: string) =>
-    set((state) => ({
-      pendingApprovals: state.pendingApprovals.filter((i) => i.id !== id),
-    })),
+  toggleAdvancedNav: () => set((state) => ({ isAdvancedNavExpanded: !state.isAdvancedNavExpanded })),
 
   markNotificationRead: (id: string) =>
     set((state) => ({
@@ -353,11 +441,4 @@ export const useAppStore = create<AppStoreState>((set) => ({
         n.id === id ? { ...n, read: true } : n
       ),
     })),
-
-  markAllNotificationsRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, read: true })),
-    })),
-
-  setWorkspace: (workspace: WorkspaceTenant) => set({ currentWorkspace: workspace }),
 }));

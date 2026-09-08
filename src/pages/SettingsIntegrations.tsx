@@ -1,224 +1,287 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { Input } from '../components/ui/Input';
-import { Tabs } from '../components/ui/Tabs';
 import {
-  Settings,
-  Key,
-  Database,
-  Shield,
+  Building2,
   Sliders,
-  CheckCircle2,
-  RefreshCw,
-  Server,
-  Lock,
-  UserCheck,
-  Globe,
   Bell,
-  Cpu,
+  Webhook,
+  Key,
+  Save,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 
 export const SettingsIntegrations: React.FC = () => {
-  const { currentWorkspace } = useAppStore();
-  const [activeTab, setActiveTab] = useState('integrations');
+  const { workspaces, activeWorkspaceId, updateWorkspaceRules } = useAppStore();
 
-  const integrations = [
-    {
-      name: 'HubSpot CRM Enterprise',
-      category: 'CRM Synchronization & Lead Route',
-      status: 'Connected & Active',
-      syncTime: '5 mins ago',
-      iconColor: 'bg-orange-500/20 text-orange-400',
-    },
-    {
-      name: 'Salesforce Sales Cloud',
-      category: 'CRM & Pipeline Opportunity Sync',
-      status: 'Connected & Active',
-      syncTime: '12 mins ago',
-      iconColor: 'bg-blue-500/20 text-blue-400',
-    },
-    {
-      name: 'Google Gemini 1.5 Pro AI SDK',
-      category: 'Server-Side Autonomous Core',
-      status: 'Connected (Server Route)',
-      syncTime: 'Real-time',
-      iconColor: 'bg-[#16C5D8]/20 text-[#16C5D8]',
-    },
-    {
-      name: 'Gong.io Call Intelligence',
-      category: 'Conversation Intelligence & Sentiment',
-      status: 'Connected',
-      syncTime: '1 hour ago',
-      iconColor: 'bg-purple-500/20 text-purple-400',
-    },
-  ];
+  const currentWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0];
+
+  const [activeTab, setActiveTab] = useState<'profile' | 'qualification' | 'notifications' | 'integrations'>('profile');
+
+  // Local Form States
+  const [name, setName] = useState(currentWorkspace.name);
+  const [subtitle, setSubtitle] = useState(currentWorkspace.subtitle);
+  const [industry, setIndustry] = useState(currentWorkspace.industry);
+  const [notificationEmail, setNotificationEmail] = useState(currentWorkspace.notificationEmail);
+  const [slackWebhook, setSlackWebhook] = useState(currentWorkspace.slackWebhook);
+  const [n8nWebhookUrl, setN8nWebhookUrl] = useState(currentWorkspace.n8nWebhookUrl);
+  const [apiKey] = useState(currentWorkspace.apiKey);
+
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const handleCopyKey = () => {
+    navigator.clipboard.writeText(apiKey);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
+  };
+
+  const handleSaveSettings = () => {
+    updateWorkspaceRules(currentWorkspace.id, {
+      name,
+      subtitle,
+      industry,
+      notificationEmail,
+      slackWebhook,
+      n8nWebhookUrl,
+    });
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#1E3452]/60">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header Banner */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <Settings className="w-6 h-6 text-[#16C5D8]" />
-              Enterprise Settings & Workspace Connectors
-            </h1>
-            <Badge variant="cyan" size="sm">
-              {currentWorkspace.plan}
-            </Badge>
+            <h2 className="text-xl font-bold text-slate-900">Settings &amp; Integrations</h2>
+            <span className="px-2.5 py-0.5 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs font-semibold">
+              Workspace: {currentWorkspace.name}
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Configure CRM connectors, Gemini AI API proxies, multi-tenant RBAC permissions, and webhook notifications.
+          <p className="text-xs text-slate-500 mt-1">
+            Manage business profile settings, notification channels, and n8n webhook API keys.
           </p>
         </div>
 
-        <Button variant="secondary" size="sm" leftIcon={<RefreshCw className="w-3.5 h-3.5 text-[#16C5D8]" />}>
-          Sync All Connectors
-        </Button>
+        <button
+          onClick={handleSaveSettings}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs shadow-2xs transition-colors cursor-pointer self-start md:self-auto"
+        >
+          <Save className="w-4 h-4" />
+          Save Settings
+        </button>
       </div>
 
-      {/* Tabs */}
-      <Tabs
-        tabs={[
-          { id: 'integrations', label: 'API Integrations & CRM Connectors', icon: <Database className="w-4 h-4" /> },
-          { id: 'workspace', label: 'Workspace & Multi-Tenancy', icon: <Sliders className="w-4 h-4" /> },
-          { id: 'security', label: 'Governance Policy & RBAC', icon: <Shield className="w-4 h-4" /> },
-        ]}
-        activeTab={activeTab}
-        onChange={setActiveTab}
-      />
+      {savedSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 text-emerald-800 text-xs font-semibold">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span>Workspace settings saved successfully!</span>
+        </div>
+      )}
 
-      {/* Tab 1: API Integrations */}
-      {activeTab === 'integrations' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {integrations.map((item, idx) => (
-              <Card key={idx} hoverEffect>
-                <CardContent className="p-5 flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <Badge variant={item.status.includes('Connected') ? 'success' : 'warning'} size="sm" dot>
-                      {item.status}
-                    </Badge>
-                    <h3 className="text-sm font-semibold text-white pt-1">{item.name}</h3>
-                    <p className="text-xs text-slate-400 font-mono">{item.category}</p>
-                    <span className="text-[10px] text-slate-500 font-mono block">Last synced: {item.syncTime}</span>
-                  </div>
+      {/* Tabs Navigation */}
+      <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-3 gap-2">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'profile'
+              ? 'border-cyan-600 text-cyan-800'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          Business Profile
+        </button>
 
-                  <Button variant="outline" size="sm">
-                    Configure
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+        <button
+          onClick={() => setActiveTab('qualification')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'qualification'
+              ? 'border-cyan-600 text-cyan-800'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Sliders className="w-4 h-4" />
+          Qualification Settings
+        </button>
+
+        <button
+          onClick={() => setActiveTab('notifications')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'notifications'
+              ? 'border-cyan-600 text-cyan-800'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          Notification Settings
+        </button>
+
+        <button
+          onClick={() => setActiveTab('integrations')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'integrations'
+              ? 'border-cyan-600 text-cyan-800'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Webhook className="w-4 h-4" />
+          Integration Settings
+        </button>
+      </div>
+
+      {/* Tab Panels */}
+      <div className="bg-white rounded-b-xl border-x border-b border-slate-200 p-6 shadow-2xs space-y-6">
+        {/* Tab 1: Business Profile */}
+        {activeTab === 'profile' && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Business Profile Details
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Organization Name:</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Company Subtitle / Sector:</label>
+                <input
+                  type="text"
+                  value={subtitle}
+                  onChange={(e) => setSubtitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block font-semibold text-slate-700 mb-1">Industry Sector:</label>
+                <input
+                  type="text"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white"
+                />
+              </div>
+            </div>
           </div>
+        )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Server className="w-4 h-4 text-[#16C5D8]" />
-                Server-Side API Route Architecture (.env Secret Protection)
-              </CardTitle>
-              <CardDescription>
-                All secret API keys (including Gemini API) are kept strictly server-side inside Cloud Run environment variables.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 font-mono text-xs text-slate-300">
-              <div className="p-3.5 rounded-xl bg-[#040B14] border border-[#1E3452]">
-                <div className="text-emerald-400 font-semibold mb-1">Status: SECURE_SERVER_PROXY_ACTIVE</div>
-                <p className="text-[11px] text-slate-400">
-                  Client requests are proxied via <span className="text-[#16C5D8]">/api/v1/gemini</span> endpoints to eliminate key exposure in browser DevTools.
-                </p>
+        {/* Tab 2: Qualification Settings */}
+        {activeTab === 'qualification' && (
+          <div className="space-y-4 text-xs">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Qualification Rules Thresholds
+            </h3>
+
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">HOT Lead Threshold:</span>
+                <span className="font-mono font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  Score &ge; 85 / 100
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Tab 2: Workspace */}
-      {activeTab === 'workspace' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Organization & Multi-Tenant Profile</CardTitle>
-            <CardDescription>Managed enterprise account settings for {currentWorkspace.name}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 max-w-xl">
-            <Input label="Workspace Name" defaultValue={currentWorkspace.name} />
-            <Input label="Custom Enterprise Domain" defaultValue={currentWorkspace.domain} />
-            <Input label="Primary Administrative Email" defaultValue="ops@acme-corp.com" />
-            <Input label="Cloud Region" defaultValue="us-central1 (Iowa)" disabled />
-
-            <Button variant="primary" size="sm" glow>
-              Save Organization Changes
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tab 3: Security & Governance */}
-      {activeTab === 'security' && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-amber-400" />
-                Human-in-the-Loop Governance Policies
-              </CardTitle>
-              <CardDescription>Strict rules requiring human operator verification before AI execution</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <div className="p-4 rounded-xl bg-[#040B14] border border-[#1E3452] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-white">Outreach Email Dispatch Approval</span>
-                  <Badge variant="cyan" size="sm">Mandatory Sign-off</Badge>
-                </div>
-                <p className="text-xs text-slate-400 font-mono">
-                  All AI-drafted C-level outreach emails require human approval in Approval Hub before sending.
-                </p>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">WARM Lead Threshold:</span>
+                <span className="font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  Score 60 - 84 / 100
+                </span>
               </div>
-
-              <div className="p-4 rounded-xl bg-[#040B14] border border-[#1E3452] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-white">Opportunity Threshold Gate</span>
-                  <span className="text-xs font-mono text-emerald-400">$100,000 ARR</span>
-                </div>
-                <p className="text-xs text-slate-400 font-mono">
-                  Any deal score alteration or stage movement exceeding $100k requires VP RevOps sign-off.
-                </p>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-800">COLD Lead Threshold:</span>
+                <span className="font-mono font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                  Score &lt; 60 / 100
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-[#16C5D8]" />
-                Role-Based Access Control (RBAC)
-              </CardTitle>
-              <CardDescription>Active team members and permissions</CardDescription>
-            </CardHeader>
+        {/* Tab 3: Notification Settings */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-4 text-xs">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+              Business Notification Channels
+            </h3>
 
-            <CardContent className="space-y-2 font-mono text-xs">
-              {[
-                { name: 'Alex Mercer', role: 'VP RevOps / Owner', email: 'alex@aura-lead.com' },
-                { name: 'Sarah Jenkins', role: 'Enterprise AE', email: 'sarah@aura-lead.com' },
-                { name: 'Michael Chang', role: 'Solutions Architect', email: 'michael@aura-lead.com' },
-              ].map((user, i) => (
-                <div key={i} className="p-3 rounded-lg bg-[#040B14] border border-[#1E3452] flex items-center justify-between">
-                  <div>
-                    <span className="text-white font-semibold font-sans block">{user.name}</span>
-                    <span className="text-slate-500 text-[10px]">{user.email}</span>
-                  </div>
-                  <Badge variant="purple" size="sm">{user.role}</Badge>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Notification Recipient Email:
+              </label>
+              <input
+                type="email"
+                value={notificationEmail}
+                onChange={(e) => setNotificationEmail(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Slack Channel Webhook URL:
+              </label>
+              <input
+                type="text"
+                value={slackWebhook}
+                onChange={(e) => setSlackWebhook(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-mono focus:bg-white"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Integration Settings */}
+        {activeTab === 'integrations' && (
+          <div className="space-y-4 text-xs">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider pb-2 border-b border-slate-100">
+              n8n Webhook &amp; API Integration
+            </h3>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                n8n Webhook Ingestion URL:
+              </label>
+              <input
+                type="text"
+                value={n8nWebhookUrl}
+                onChange={(e) => setN8nWebhookUrl(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 font-mono focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Aura API Key:
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={apiKey}
+                  className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-700 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyKey}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-4 h-4" />
+                  {copiedKey ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

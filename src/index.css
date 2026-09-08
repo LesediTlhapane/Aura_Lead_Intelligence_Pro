@@ -2,98 +2,72 @@
 
 @layer base {
   :root {
-    --bg-primary: #030712;
-    --bg-secondary: #0B0F19;
-    --bg-card: #0F172A;
-    --border-color: rgba(30, 58, 138, 0.25);
-    --border-glow: rgba(56, 189, 248, 0.3);
+    --bg-primary: #F8FAFC;
+    --bg-secondary: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --border-color: #E2E8F0;
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+    --aura-cyan: #0891B2;
+    --aura-purple: #7C3AED;
   }
 
   body {
-    background-color: #020617;
-    color: #F8FAFC;
+    background-color: #F8FAFC;
+    color: #0F172A;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
-/* Enterprise Glass & Glow Effects */
-.aura-glass {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(51, 65, 85, 0.6);
+/* Enterprise Clean Light Theme Utilities */
+.aura-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease-in-out;
 }
 
-.aura-glass-card {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.5) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(51, 65, 85, 0.5);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+.aura-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
-.aura-glass-card:hover {
-  border-color: rgba(56, 189, 248, 0.4);
-  box-shadow: 0 12px 35px -10px rgba(56, 189, 248, 0.15);
+.aura-badge-hot {
+  background-color: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
 }
 
-.aura-glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.3);
+.aura-badge-warm {
+  background-color: #FFFBEB;
+  color: #92400E;
+  border: 1px solid #FCD34D;
 }
 
-.aura-glow-pink {
-  box-shadow: 0 0 25px -5px rgba(236, 72, 153, 0.3);
+.aura-badge-cold {
+  background-color: #F0F9FF;
+  color: #075985;
+  border: 1px solid #7DD3FC;
 }
 
-.aura-glow-purple {
-  box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.3);
-}
-
-/* Custom Keyframe Animations */
-@keyframes pulseGlow {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.05);
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 2.5s infinite ease-in-out;
-}
-
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(1000%);
-  }
-}
-
-.animate-scanline {
-  animation: scanline 8s linear infinite;
-}
-
-/* Custom Scrollbar for Enterprise Tables & Logs */
+/* Custom Scrollbar for Light Theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #F1F5F9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94A3B8;
 }
