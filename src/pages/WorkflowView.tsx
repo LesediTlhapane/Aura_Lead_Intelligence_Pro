@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { ClassificationType } from '../types';
+import { submitLeadToAura } from '../lib/auraApi';
 import {
   FileText,
   Webhook,
@@ -36,63 +37,91 @@ export const WorkflowView: React.FC = () => {
     classification: ClassificationType;
   } | null>(null);
 
-  const handleSimulateWebhook = () => {
-    setIsSimulating(true);
-    setSimulatedResult(null);
+const handleSimulateWebhook = async () => {
+  setIsSimulating(true);
+  setSimulatedResult(null);
 
-    setTimeout(() => {
-      // Logic to score mock lead based on inputs
-      const isCommercial = testLeadType.includes('Commercial') || testLeadType.includes('Industrial');
-      const isLargeRoof = parseInt(testRoofArea.replace(/[^0-9]/g, '')) > 2000;
-      const isImmediate = testTimeline.includes('Immediate');
+  try {
+    const payload = {
+      workspace_id: currentWorkspace.id,
+      name: testLeadName,
+      email: testEmail,
+      phone: testPhone,
+      company: testCompany,
 
-      let score = 55;
-      if (isCommercial) score += 20;
-      if (isLargeRoof) score += 15;
-      if (isImmediate) score += 10;
-      score = Math.min(score, 96);
+      service_interest: testLeadType,
+      project_type: testLeadType,
 
-      const classification: ClassificationType =
-        score >= 85 ? 'HOT' : score >= 60 ? 'WARM' : 'COLD';
+      budget: testBudget,
+      urgency: testTimeline,
 
-      addLead({
-        name: testLeadName,
-        company: testCompany,
-        email: testEmail,
-        phone: testPhone,
-        leadType: testLeadType,
-        score,
-        classification,
-        status: 'New',
-        reviewed: false,
-        qualificationReasons: [
-          '✓ Commercial facility footprint verified',
-          `✓ Roof area meets threshold (${testRoofArea})`,
-          `✓ Pre-approved budget specified (${testBudget})`,
-          `✓ Deployment timeline: ${testTimeline}`,
-        ],
-        signalsDetected: [
-          'Commercial Project',
-          'Immediate Deployment',
-          'High Roof Footprint',
-          'Budget Verified',
-        ],
-        recommendedAction:
-          classification === 'HOT'
-            ? 'Contact within 2 hours & assign Senior Technical Auditor.'
-            : 'Follow up within 24 hours with Feasibility Proposal.',
-        submittedData: {
-          'Project Type': testLeadType,
-          'Roof Area': testRoofArea,
-          'Estimated Budget': testBudget,
-          'Timeline': testTimeline,
-        },
-      });
+      message: `
+        Lead requirement: ${testLeadType}.
+        Estimated roof area: ${testRoofArea}.
+        Estimated budget: ${testBudget}.
+        Timeline: ${testTimeline}.
+      `,
 
-      setIsSimulating(false);
-      setSimulatedResult({ score, classification });
-    }, 1200);
-  };
+      source: 'aura-dashboard',
+    };
+
+    const result = await submitLeadToAura(
+      payload,
+      currentWorkspace.n8nWebhookUrl
+    );
+
+    if (!result.success) {
+      throw new Error(
+        result.detail ||
+        result.error ||
+        'Lead qualification failed'
+      );
+    }
+
+    addLead({
+      name: testLeadName,
+      company: testCompany,
+      email: testEmail,
+      phone: testPhone,
+      leadType: testLeadType,
+
+      score: result.score ?? 0,
+      classification: result.classification ?? 'COLD',
+
+      status: 'New',
+      reviewed: false,
+
+      qualificationReasons: result.reasons ?? [],
+      signalsDetected: result.signals ?? [],
+
+      recommendedAction:
+        result.recommended_action ?? '',
+
+      submittedData: {
+        'Project Type': testLeadType,
+        'Roof Area': testRoofArea,
+        'Estimated Budget': testBudget,
+        'Timeline': testTimeline,
+      },
+    });
+
+    setSimulatedResult({
+      score: result.score ?? 0,
+      classification: result.classification ?? 'COLD',
+    });
+
+  } catch (error) {
+    console.error('Aura qualification failed:', error);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : 'Unable to connect to Aura AI.'
+    );
+  } finally {
+    setIsSimulating(false);
+  }
+};
 
   const workflowSteps = [
     {
